@@ -1,14 +1,12 @@
 package pe.com.bootcamp.microservice.account.service.impl;
+ 
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.beans.factory.annotation.Autowired; 
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import pe.com.bootcamp.microservice.account.dto.AccountDTO;
-import pe.com.bootcamp.microservice.account.entity.Account;
 import pe.com.bootcamp.microservice.account.repository.IAccountRepository;
 import pe.com.bootcamp.microservice.account.service.AccountService;
-import pe.com.bootcamp.microservice.account.util.Utils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -16,53 +14,46 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 	@Autowired
-	 private final ReactiveMongoTemplate reactiveMongoTemplate;
-	 
-	@Autowired
-	private final IAccountRepository iAccountRepository;
+	private IAccountRepository iAccountRepo;
 
 	@Override
-	public Flux<Account> getAllAccount() {
-		return iAccountRepository.findAll();
-	}
-
-	@Override 
-	    public Mono<AccountDTO> createAccount(Mono<AccountDTO> account){	     
-	        return account.map(Utils::dtoToEntity)
-	                .flatMap(reactiveMongoTemplate::save)
-	                .map(Utils::entityToDto);
-	    }
-
-	@Override
-	public Mono<Account> updateAccount(String id, Account account) {
-		
-		return iAccountRepository.findById(id)
-				.flatMap(bean -> {	            	
-					bean.setAmountAvaible(account.getAmountAvaible());
-					bean.setAvailableBalance(account.getAvailableBalance());
-					bean.setCondition(account.getCondition());
-					bean.setDateEnd(account.getDateEnd());
-					bean.setDateStart(account.getDateStart());
-					bean.setIdCustomer(account.getIdCustomer());
-					bean.setNumberAccount(account.getNumberAccount());
-					bean.setTypeAccount(account.getTypeAccount());
-					return iAccountRepository.save(bean);
-				});
+	public void createAcc(AccountDTO account) {
+		iAccountRepo.save(account).subscribe();
 	}
 
 	@Override
-	public Mono<Account> deleteAccount(String id) {
-		return iAccountRepository.findById(id)
-				.flatMap(existsAccount -> iAccountRepository.delete(existsAccount).then(Mono.just(existsAccount)));
+	public Mono<AccountDTO> findByAccId(String id) {
+		return iAccountRepo.findById(id);
 	}
 
 	@Override
-	public Mono<Account> getAccountById(String id) {
-		return iAccountRepository.findById(id);
+	public Flux<AccountDTO> findAllAcc() {
+		return iAccountRepo.findAll();
 	}
- 
 
- 
+	@Override
+	public Mono<AccountDTO> updateAcc(String id, AccountDTO account) {
+		return iAccountRepo.findById(id)
+				.switchIfEmpty(Mono.error(new Exception("TASK_NOT_FOUND")))
+				.map(fetchedAccount  -> {
+					account.setId(id);
+					if (account.getTypeAccount() != null) {fetchedAccount.setTypeAccount(account.getTypeAccount());}
+					if (account.getProfileAccount() != null) {fetchedAccount.setProfileAccount(account.getProfileAccount());}
+					if (account.getCondition() != null) {fetchedAccount.setCondition(account.getCondition());}
+					if (account.getIdCustomer() != null) {fetchedAccount.setIdCustomer(account.getIdCustomer());}
+					if (account.getNumMaxDeposit() != 0) {fetchedAccount.setNumMaxDeposit(account.getNumMaxDeposit());}
+					if (account.getNumMaxWithdraw() != 0) {fetchedAccount.setNumMaxWithdraw(account.getNumMaxWithdraw());}
+					if (account.getCurrency() != null) {fetchedAccount.setCurrency(account.getCurrency());}
+					if (account.getInitialAmount() != 0.0d) {fetchedAccount.setInitialAmount(account.getInitialAmount());}
+					if (account.getCurrentAmount() != 0.0d) {fetchedAccount.setCurrentAmount(account.getCurrentAmount());}
+					if (account.getMinAmountAverage() != 0.0d) {fetchedAccount.setMinAmountAverage(account.getMinAmountAverage());}
+					return fetchedAccount;
+				})
+				.flatMap(iAccountRepo::save);
+	}
 
-
+	@Override
+	public Mono<Void> deleteAcc(String id) {
+		return iAccountRepo.deleteById(id);
+	}
 }
